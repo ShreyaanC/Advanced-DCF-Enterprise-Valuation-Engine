@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Shreyaan Chauhan">
+    <meta name="copyright" content="Shreyaan Chauhan">
+    <title>DCF Analyzer - Shreyaan Chauhan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Developed and Designed by Shreyaan Chauhan 
+           All Rights Reserved © 2025
+        */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        .input-cell { @apply w-full px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-orange-500 text-right; }
+        .result-card { @apply bg-white p-4 rounded-lg shadow-sm border-l-4; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col min-h-screen">
+
+    <header class="bg-orange-700 text-white p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold"><i class="fa-solid fa-calculator mr-2"></i> DCF & Valuation</h1>
+                <p class="text-[10px] opacity-75 uppercase tracking-wider">Developed by Shreyaan Chauhan</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('about-modal').classList.remove('hidden')" class="text-sm bg-orange-900 hover:bg-black px-3 py-1 rounded transition">
+                    <i class="fa-solid fa-user-tie"></i> About
+                </button>
+                <button onclick="document.getElementById('help-modal').classList.remove('hidden')" class="text-sm bg-orange-800 hover:bg-orange-900 px-3 py-1 rounded transition">
+                    <i class="fa-solid fa-circle-question"></i> How to Use
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
+
+        <div class="lg:col-span-3 space-y-4">
+            <div class="bg-white p-5 rounded-lg shadow-md">
+                <h2 class="text-lg font-semibold mb-4 border-b pb-2 text-slate-700">Assumptions</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Start Year</label>
+                        <input type="number" id="input-start-year" class="w-full border rounded p-2 focus:ring-2 focus:ring-orange-500 outline-none" onchange="updateProjectStructure()">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Projection Years</label>
+                        <input type="number" id="input-years" value="5" min="1" max="50" class="w-full border rounded p-2 focus:ring-2 focus:ring-orange-500 outline-none" onchange="updateProjectStructure()">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Discount Rate (WACC) %</label>
+                        <input type="number" id="input-wacc" value="12.0" step="0.1" class="w-full border rounded p-2 focus:ring-2 focus:ring-orange-500 outline-none" oninput="calculate()">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Terminal Growth Rate %</label>
+                        <input type="number" id="input-growth" value="5.0" step="0.1" class="w-full border rounded p-2 focus:ring-2 focus:ring-orange-500 outline-none" oninput="calculate()">
+                        <p class="text-xs text-slate-400 mt-1">For Gordon Growth (India typ. 4-6%)</p>
+                    </div>
+
+                    <div class="pt-4 border-t">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Shares Outstanding</label>
+                        <input type="number" id="input-shares" value="100000" class="w-full border rounded p-2 focus:ring-2 focus:ring-orange-500 outline-none" oninput="calculate()">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Net Debt (₹)</label>
+                        <input type="number" id="input-debt" value="500000" class="w-full border rounded p-2 focus:ring-2 focus:ring-orange-500 outline-none" oninput="calculate()">
+                        <p class="text-xs text-slate-400 mt-1">Total Debt - Cash</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-lg shadow-md">
+                <h2 class="text-sm font-semibold mb-2 text-slate-700">Quick Paste Cash Flows</h2>
+                <textarea id="paste-area" rows="3" placeholder="Paste csv/list (e.g. -1000000, 250000, 300000...)" class="w-full text-xs border rounded p-2 mb-2"></textarea>
+                <button onclick="handlePaste()" class="w-full bg-orange-100 text-orange-700 text-sm font-medium py-1 rounded hover:bg-orange-200">Parse & Apply</button>
+            </div>
+        </div>
+
+        <div class="lg:col-span-9 space-y-6">
+            
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="results-container"></div>
+
+            <div class="bg-white p-4 rounded-lg shadow-md">
+                <h3 class="text-sm font-bold text-slate-500 uppercase mb-2">Cash Flow Projection</h3>
+                <div class="h-64 w-full relative">
+                    <canvas id="cfChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-lg shadow-md overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-slate-700">Discounted Cash Flow Schedule</h3>
+                    <div class="space-x-2">
+                        <button onclick="exportCSV()" class="text-sm border border-slate-300 px-3 py-1 rounded hover:bg-slate-50 text-slate-600">
+                            <i class="fa-solid fa-file-csv"></i> Export CSV
+                        </button>
+                        <button onclick="copyResults()" class="text-sm bg-orange-600 text-white px-3 py-1 rounded hover:bg-orange-700 shadow">
+                            <i class="fa-regular fa-copy"></i> Copy Summary
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-slate-600">
+                        <thead class="text-xs text-slate-700 uppercase bg-slate-100">
+                            <tr>
+                                <th class="px-4 py-3 rounded-l-lg">Period</th>
+                                <th class="px-4 py-3">Year</th>
+                                <th class="px-4 py-3 text-right" style="min-width: 120px;">Cash Flow (₹)</th>
+                                <th class="px-4 py-3 text-right">Discount Factor</th>
+                                <th class="px-4 py-3 text-right">Discounted CF</th>
+                                <th class="px-4 py-3 text-right rounded-r-lg">Cumulative DCF</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cf-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t mt-auto py-6">
+        <div class="container mx-auto text-center text-slate-500 text-sm">
+            <p>&copy; <script>document.write(new Date().getFullYear())</script> <strong>Shreyaan Chauhan</strong>. All rights reserved.</p>
+            <p class="text-[10px] opacity-50 mt-1">Unauthorized distribution or alteration is prohibited.</p>
+        </div>
+    </footer>
+
+    <div id="about-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 text-center relative">
+            <button onclick="document.getElementById('about-modal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-800">
+                <i class="fa-solid fa-times text-xl"></i>
+            </button>
+            <div class="w-20 h-20 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-user-shield text-4xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800">About the Author</h2>
+            <p class="text-slate-600 mt-2">This Financial Valuation Tool was developed by:</p>
+            <h3 class="text-xl font-bold text-orange-700 mt-1">Shreyaan Chauhan</h3>
+            <div class="mt-6 p-4 bg-slate-50 rounded-lg text-sm text-slate-500 text-left">
+                <p><strong>Copyright Notice:</strong></p>
+                <p class="mt-2">© 2025 Shreyaan Chauhan. This software is protected by copyright laws. The logic, UI design, and branding are the intellectual property of the author.</p>
+            </div>
+            <button onclick="document.getElementById('about-modal').classList.add('hidden')" class="mt-6 w-full bg-slate-800 text-white py-2 rounded-lg hover:bg-black transition">Close</button>
+        </div>
+    </div>
+
+    <div id="help-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative">
+            <button onclick="document.getElementById('help-modal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-800">
+                <i class="fa-solid fa-times text-xl"></i>
+            </button>
+            <h2 class="text-2xl font-bold mb-4">How to use this Calculator</h2>
+            <div class="space-y-3 text-slate-600 text-sm overflow-y-auto max-h-[60vh]">
+                <p><strong>1. Setup Assumptions:</strong> Set your WACC, projection years, and terminal growth rate.</p>
+                <p><strong>2. Input Cash Flows:</strong> Enter cash flows in the table. Year 0 is usually the initial investment.</p>
+                <p><strong>3. Quick Paste:</strong> Paste a comma-separated list of numbers to auto-fill.</p>
+                <h3 class="font-bold text-slate-800 mt-4">Metrics Explained</h3>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><strong>NPV:</strong> Net Present Value.</li>
+                    <li><strong>IRR:</strong> Internal Rate of Return.</li>
+                    <li><strong>Enterprise Value (EV):</strong> NPV of flows + PV of Terminal Value.</li>
+                </ul>
+            </div>
+            <div class="mt-6 text-right">
+                <button onclick="document.getElementById('help-modal').classList.add('hidden')" class="bg-orange-600 text-white px-6 py-2 rounded hover:bg-orange-700">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * DCF Analyzer - Logic & Core Engine
+         * Property of Shreyaan Chauhan
+         */
+        const DEFAULT_YEARS = 5;
+        let chartInstance = null;
+        const defaultFlows = [-1000000, 200000, 250000, 300000, 350000, 400000];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("%cDCF Analyzer by Shreyaan Chauhan initialized.", "color: orange; font-weight: bold; font-size: 14px;");
+            document.getElementById('input-start-year').value = new Date().getFullYear();
+            updateProjectStructure();
+        });
+
+        function updateProjectStructure() {
+            const years = parseInt(document.getElementById('input-years').value) || 5;
+            const startYear = parseInt(document.getElementById('input-start-year').value) || new Date().getFullYear();
+            const tbody = document.getElementById('cf-table-body');
+            const existingInputs = document.querySelectorAll('.cf-input');
+            let currentValues = {};
+            existingInputs.forEach(input => { currentValues[input.dataset.year] = input.value; });
+
+            tbody.innerHTML = '';
+            for (let i = 0; i <= years; i++) {
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-slate-50 transition";
+                let val = currentValues[i] !== undefined ? currentValues[i] : (defaultFlows[i] || 0);
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-medium text-slate-500">${i === 0 ? 'Start (Initial)' : 'Period ' + i}</td>
+                    <td class="px-4 py-3 text-slate-500">${startYear + i}</td>
+                    <td class="px-4 py-2">
+                        <input type="number" class="cf-input w-full border border-slate-300 rounded px-2 py-1 text-right focus:border-orange-500 outline-none" data-year="${i}" value="${val}" oninput="calculate()">
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono text-xs text-slate-500" id="df-${i}">-</td>
+                    <td class="px-4 py-3 text-right font-mono text-sm" id="dcf-${i}">-</td>
+                    <td class="px-4 py-3 text-right font-mono text-sm font-semibold" id="cdcf-${i}">-</td>
+                `;
+                tbody.appendChild(tr);
+            }
+            calculate();
+        }
+
+        function calculate() {
+            const waccPercent = parseFloat(document.getElementById('input-wacc').value) || 0;
+            const growthPercent = parseFloat(document.getElementById('input-growth').value) || 0;
+            const shares = parseFloat(document.getElementById('input-shares').value) || 1;
+            const debt = parseFloat(document.getElementById('input-debt').value) || 0;
+            const startYear = parseInt(document.getElementById('input-start-year').value) || new Date().getFullYear();
+            const r = waccPercent / 100;
+            const g = growthPercent / 100;
+            const inputs = document.querySelectorAll('.cf-input');
+            const flows = Array.from(inputs).map(inp => parseFloat(inp.value) || 0);
+            
+            let npvExplicit = 0;
+            let cumulativeDCF = 0;
+            let tableData = [];
+
+            flows.forEach((cf, t) => {
+                const df = 1 / Math.pow(1 + r, t);
+                const dcf = cf * df;
+                cumulativeDCF += dcf;
+                document.getElementById(`df-${t}`).textContent = df.toFixed(4);
+                document.getElementById(`dcf-${t}`).textContent = formatCurrency(dcf);
+                document.getElementById(`cdcf-${t}`).textContent = formatCurrency(cumulativeDCF);
+                const dcfEl = document.getElementById(`dcf-${t}`);
+                dcfEl.className = `px-4 py-3 text-right font-mono text-sm ${dcf < 0 ? 'text-red-600' : 'text-green-600'}`;
+                tableData.push({ t, year: startYear + t, cf, dcf, cumulativeDCF });
+            });
+
+            const totalNPV = cumulativeDCF; 
+            const lastCF = flows[flows.length - 1];
+            let tv = (r > g) ? (lastCF * (1 + g)) / (r - g) : 0;
+            let tvDiscounted = tv / Math.pow(1 + r, flows.length - 1);
+            
+            let explicitPeriodPV = 0;
+            for(let i=1; i<flows.length; i++) { explicitPeriodPV += tableData[i].dcf; }
+
+            const enterpriseValue = explicitPeriodPV + tvDiscounted;
+            const equityValueFinal = enterpriseValue - debt;
+            const pricePerShare = equityValueFinal / shares;
+
+            let cumulUndiscounted = 0;
+            let payback = "N/A";
+            for(let i=0; i<flows.length; i++) {
+                let prev = cumulUndiscounted;
+                cumulUndiscounted += flows[i];
+                if (prev < 0 && cumulUndiscounted >= 0) {
+                    payback = (i - 1 + (Math.abs(prev) / flows[i])).toFixed(2) + " Years";
+                    break;
+                }
+            }
+
+            updateCards({
+                npv: totalNPV, irr: calculateIRR(flows), payback: payback,
+                tv: tv, ev: enterpriseValue, sharePrice: pricePerShare
+            });
+            updateChart(tableData);
+        }
+
+        function updateCards(metrics) {
+            const container = document.getElementById('results-container');
+            const cards = [
+                { label: "NPV", value: formatCurrency(metrics.npv), color: metrics.npv >= 0 ? "border-green-500" : "border-red-500" },
+                { label: "IRR", value: (typeof metrics.irr === 'string') ? metrics.irr : (metrics.irr * 100).toFixed(2) + "%", color: "border-blue-500" },
+                { label: "Payback", value: metrics.payback, color: "border-purple-500" },
+                { label: "Enterprise Value", value: formatCurrency(metrics.ev), color: "border-indigo-500" },
+                { label: "Terminal Value (PV)", value: formatCurrency(metrics.tv / Math.pow(1 + parseFloat(document.getElementById('input-wacc').value)/100, document.querySelectorAll('.cf-input').length - 1)), color: "border-amber-500" },
+                { label: "Est. Value / Share", value: formatCurrency(metrics.sharePrice), color: metrics.sharePrice > 0 ? "border-emerald-600" : "border-red-600" }
+            ];
+
+            container.innerHTML = cards.map(c => `
+                <div class="result-card ${c.color} fade-in">
+                    <p class="text-xs font-bold uppercase text-slate-400 mb-1">${c.label}</p>
+                    <p class="text-2xl font-bold text-slate-800">${c.value}</p>
+                </div>
+            `).join('');
+        }
+
+        function calculateIRR(values, guess = 0.1) {
+            if (values.every(v => v >= 0) || values.every(v => v <= 0)) return "No IRR";
+            const npv = (rate, vals) => vals.reduce((acc, v, i) => acc + v / Math.pow(1 + rate, i), 0);
+            const deriv = (rate, vals) => vals.reduce((acc, v, i) => i === 0 ? acc : acc - (i * v) / Math.pow(1 + rate, i + 1), 0);
+            let x = guess;
+            for (let i = 0; i < 50; i++) {
+                const fVal = npv(x, values);
+                const fPrime = deriv(x, values);
+                if (Math.abs(fPrime) < 1e-10) break;
+                const newX = x - fVal / fPrime;
+                if (Math.abs(newX - x) < 1e-7) return newX;
+                x = newX;
+            }
+            return "Calculation Error";
+        }
+
+        function formatCurrency(num) {
+            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
+        }
+
+        function handlePaste() {
+            const raw = document.getElementById('paste-area').value;
+            const numbers = raw.split(/[\s,]+/).map(n => parseFloat(n.replace(/[^0-9.-]/g, ''))).filter(n => !isNaN(n));
+            if (numbers.length > 0) {
+                const yearsInput = document.getElementById('input-years');
+                if (numbers.length - 1 > parseInt(yearsInput.value)) {
+                    yearsInput.value = numbers.length - 1;
+                    updateProjectStructure(); 
+                }
+                const inputs = document.querySelectorAll('.cf-input');
+                inputs.forEach((inp, idx) => { if (idx < numbers.length) inp.value = numbers[idx]; });
+                calculate();
+                document.getElementById('paste-area').value = '';
+            }
+        }
+
+        function exportCSV() {
+            const inputs = Array.from(document.querySelectorAll('.cf-input')).map(i => i.value);
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "REPORT GENERATED BY SHREYAAN CHAUHAN DCF ANALYZER\n";
+            csvContent += "Year,Cash Flow,Discount Factor,Discounted CF,Cumulative DCF\n";
+            inputs.forEach((val, i) => {
+                const df = document.getElementById(`df-${i}`).textContent;
+                const dcf = document.getElementById(`dcf-${i}`).textContent.replace(/[₹,]/g, '');
+                const cdcf = document.getElementById(`cdcf-${i}`).textContent.replace(/[₹,]/g, '');
+                csvContent += `${i},${val},${df},${dcf},${cdcf}\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "DCF_Valuation_Shreyaan_Chauhan.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function copyResults() {
+            const cards = document.querySelectorAll('.result-card');
+            let text = "Financial Valuation Results (Shreyaan Chauhan DCF Analyzer):\n\n";
+            cards.forEach(c => {
+                text += `${c.querySelector('p:nth-child(1)').textContent}: ${c.querySelector('p:nth-child(2)').textContent}\n`;
+            });
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('button[onclick="copyResults()"]');
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                setTimeout(() => btn.innerHTML = orig, 2000);
+            });
+        }
+
+        function updateChart(data) {
+            const ctx = document.getElementById('cfChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.year),
+                    datasets: [
+                        { label: 'Discounted CF', data: data.map(d => d.dcf), backgroundColor: 'rgba(234, 88, 12, 0.8)', borderColor: 'rgba(194, 65, 12, 1)', borderWidth: 1 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { ticks: { callback: v => '₹' + (v / 100000).toFixed(1) + 'L' } } }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
