@@ -30,13 +30,5 @@ This software is the proprietary work of Shreyaan Chauhan.
 * **Usage**: This code is provided for portfolio demonstration and personal educational use. 
 * **Restrictions**: Unauthorized removal of copyright notices, redistribution under another name, or commercial hosting is strictly prohibited.
 
-## 📥 Getting Started
-1.  Clone this repository:
-    ```bash
-    git clone [https://github.com/YOUR_USERNAME/DCF-Analyzer.git](https://github.com/YOUR_USERNAME/DCF-Analyzer.git)
-    ```
-2.  Open `DCF analyzer.html` in any modern web browser.
-3.  Set your assumptions (WACC, Growth, Debt) and input your cash flow projections to see the results.
-
 ---
 **Developed with precision by Shreyaan Chauhan.**
